@@ -1,5 +1,6 @@
-import { Dependencies } from "../store/dependencies";
-import { AppStore, createStore } from "../store/store";
+import { SystemIDProvider } from "@/utils/id-provider";
+import { AppStore, createStore } from "../../store/store";
+import { Dependencies } from "../../store/dependencies";
 
 export class App {
 	public dependencies: Dependencies;
@@ -11,7 +12,9 @@ export class App {
 	}
 
 	setupDependencies(): Dependencies {
-		return {};
+		return {
+			idProvider: new SystemIDProvider(),
+		};
 	}
 }
 

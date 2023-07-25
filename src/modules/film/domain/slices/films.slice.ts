@@ -10,102 +10,96 @@ const initialState: FilmDomainModel.FilmState = {
 	films: [],
 	status: "idle",
 	error: null,
-	editingFilm: null,
+	editFilm: null,
 	filter: "",
+	category: "owned",
+	formMode: false,
+	addingMode: false,
+	editingMode: false,
 };
 
 export const getFilms = createAsyncThunk(
-	"getFilms",
-	async (args, { rejectWithValue }) => {
-		const response = await fetch("http://localhost:5000/films");
-
+	"films/getFilms",
+	async (_, thunkApi) => {
 		try {
+			const response = await fetch(`http://localhost:5000/films`);
 			const result: FilmDomainModel.Film[] = await response.json();
 			console.log(result);
 			return result;
-		} catch (error: unknown) {
+		} catch (error: any) {
 			if (error instanceof Error) {
-				return rejectWithValue(error.message);
+				return thunkApi.rejectWithValue(error.message);
 			}
-			return rejectWithValue("An unknown error occurred.");
+			return thunkApi.rejectWithValue("An unknown error occurred.");
 		}
 	},
 );
 
 export const deleteFilm = createAsyncThunk(
-	"deleteFilm",
-	async (id: string, { rejectWithValue }) => {
-		const response = await fetch(
-			// `https://64aec8c6c85640541d4db3ac.mockapi.io/crud/${id}`,
-			`http://localhost:5000/films/${id}`,
-			{ method: "DELETE" },
-		);
-
+	"films/deleteFilm",
+	async (id: string, thunkApi) => {
 		try {
+			const response = await fetch(`http://localhost:5000/films/${id}`, {
+				method: "DELETE",
+			});
 			const result = await response.json();
 			console.log(result);
 			return result;
-		} catch (error: unknown) {
+		} catch (error: any) {
 			if (error instanceof Error) {
-				return rejectWithValue(error.message);
+				return thunkApi.rejectWithValue(error.message);
 			}
-			return rejectWithValue("An unknown error occurred.");
+			return thunkApi.rejectWithValue("An unknown error occurred.");
 		}
 	},
 );
 
 export const createFilm = createAsyncThunk(
-	"createFilm",
-	async (data: FilmDomainModel.FilmInput, { rejectWithValue }) => {
-		const response = await fetch(
-			//"https://64aec8c6c85640541d4db3ac.mockapi.io/crud",
-			"http://localhost:5000/films",
-			{
+	"films/createFilm",
+	async (data: FilmDomainModel.FilmInput, thunkApi) => {
+		try {
+			const response = await fetch("http://localhost:5000/films", {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
 				},
 				body: JSON.stringify(data),
-			},
-		);
-
-		try {
+			});
 			const result = await response.json();
 			return result;
-		} catch (error: unknown) {
+		} catch (error: any) {
 			if (error instanceof Error) {
-				return rejectWithValue(error.message);
+				return thunkApi.rejectWithValue(error.message);
 			}
-			return rejectWithValue("An unknown error occurred.");
+			return thunkApi.rejectWithValue("An unknown error occurred.");
 		}
 	},
 );
 
 export const updateFilm = createAsyncThunk(
-	"updateFilm",
+	"films/updateFilm",
 	async (
 		updatedFilm: { id: string; data: FilmDomainModel.FilmInput },
-		{ rejectWithValue },
+		thunkApi,
 	) => {
-		const response = await fetch(
-			`http://localhost:5000/films/${updatedFilm.id}`,
-			{
-				method: "PUT",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify(updatedFilm.data),
-			},
-		);
-
 		try {
+			const response = await fetch(
+				`http://localhost:5000/films/${updatedFilm.id}`,
+				{
+					method: "PUT",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify(updatedFilm.data),
+				},
+			);
 			const result = await response.json();
 			return result;
-		} catch (error: unknown) {
+		} catch (error: any) {
 			if (error instanceof Error) {
-				return rejectWithValue(error.message);
+				return thunkApi.rejectWithValue(error.message);
 			}
-			return rejectWithValue("An unknown error occurred.");
+			return thunkApi.rejectWithValue("An unknown error occurred.");
 		}
 	},
 );
@@ -114,14 +108,38 @@ export const filmsSlice = createSlice({
 	name: "film",
 	initialState,
 	reducers: {
+		enterFormMode: (state) => {
+			state.formMode = true;
+		},
+		exitFormMode: (state) => {
+			state.formMode = false;
+		},
+		enterAddingMode: (state) => {
+			state.addingMode = true;
+		},
+		exitAddingMode: (state) => {
+			state.addingMode = false;
+		},
+		enterEditingMode: (state) => {
+			state.editingMode = true;
+		},
+		exitEditingMode: (state) => {
+			state.editingMode = false;
+		},
 		enterEditMode: (state, action: PayloadAction<string>) => {
 			const film = state.films.find((item) => item.id === action.payload);
 			if (film) {
-				state.editingFilm = film;
+				state.editFilm = film;
 			}
 		},
 		exitEditMode: (state) => {
-			state.editingFilm = null;
+			state.editFilm = null;
+		},
+		setCategory: (
+			state,
+			action: PayloadAction<"owned" | "desired" | "televised">,
+		) => {
+			state.category = action.payload;
 		},
 	},
 	extraReducers: (builder) => {
@@ -161,10 +179,13 @@ export const filmsSlice = createSlice({
 			.addCase(createFilm.pending, (state) => {
 				state.status = "loading";
 			})
-			.addCase(createFilm.fulfilled, (state, action) => {
-				state.status = "idle";
-				state.films.push(action.payload);
-			})
+			.addCase(
+				createFilm.fulfilled,
+				(state, action: PayloadAction<FilmDomainModel.Film>) => {
+					state.status = "idle";
+					state.films.push(action.payload);
+				},
+			)
 			.addCase(createFilm.rejected, (state, action) => {
 				state.status = "failed";
 				state.error = action.error.message || null;
@@ -190,4 +211,14 @@ export const filmsSlice = createSlice({
 });
 
 export default filmsSlice.reducer;
-export const { enterEditMode, exitEditMode } = filmsSlice.actions;
+export const {
+	enterEditMode,
+	exitEditMode,
+	enterFormMode,
+	exitFormMode,
+	enterAddingMode,
+	exitAddingMode,
+	enterEditingMode,
+	exitEditingMode,
+	setCategory,
+} = filmsSlice.actions;

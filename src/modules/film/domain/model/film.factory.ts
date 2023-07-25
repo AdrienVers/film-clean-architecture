@@ -7,6 +7,8 @@ export class FilmFactory {
 			title: "",
 			director: "",
 			year: "",
+			actors: ["", "", ""],
+			synopsis: "",
 			...data,
 		};
 	}
